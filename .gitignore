@@ -4,3 +4,4 @@
 MBTA_GTFS/
 zig-pkg/
 zig-out/
+.apikey
