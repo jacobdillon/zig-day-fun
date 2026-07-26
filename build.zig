@@ -1,4 +1,5 @@
 const std = @import("std");
+const protobuf = @import("protobuf");
 
 // Although this function looks imperative, it does not perform the build
 // directly and instead it mutates the build graph (`b`) that will be then
@@ -45,6 +46,21 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    const gen_proto = b.step("gen-proto", "generates zig files from protobuf definitions");
+
+    const protoc_step = protobuf.RunProtocStep.create(protobuf_dep.builder, target, .{
+        .destination_directory = b.path("src/proto"),
+
+        .source_files = &.{
+            b.path("protocol/gtfs-realtime.proto"),
+        },
+
+        .include_directories = &.{b.path("protocol/")},
+
+        .preserve_unknown_fields = false,
+    });
+
+    gen_proto.dependOn(&protoc_step.step);
 
     // Here we define an executable. An executable needs to have a root module
     // which needs to expose a `main` function. While we could add a main function
