@@ -1,0 +1,4 @@
+.direnv/
+.envrc
+.zig-cache/
+MBTA_GTFS/
