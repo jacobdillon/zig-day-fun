@@ -5,11 +5,11 @@ pub const RequestEngineError = error{BadStatus};
 pub const RequestEngine = struct {
     client: std.http.Client,
 
-    pub fn req(self: *RequestEngine, alloc: std.mem.Allocator, method: std.http.Method, uri: std.Uri) !std.ArrayList(u8) {
+    pub fn req(self: *RequestEngine, alloc: std.mem.Allocator, method: std.http.Method, uri: std.Uri, headers: []const std.http.Header) !std.ArrayList(u8) {
         var output = try std.ArrayList(u8).initCapacity(alloc, 0);
         var redirect_buf: [1024]u8 = undefined;
 
-        var request = try self.client.request(method, uri, .{});
+        var request = try self.client.request(method, uri, .{ .extra_headers = headers });
         defer request.deinit();
         try request.sendBodiless();
 
