@@ -3,3 +3,4 @@
 .zig-cache/
 MBTA_GTFS/
 zig-pkg/
+zig-out/
