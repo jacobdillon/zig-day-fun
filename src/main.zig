@@ -34,13 +34,6 @@ pub fn main(init: std.process.Init) !void {
     var fm = try pb.FeedMessage.decode(&res_reader, init.gpa);
     defer fm.deinit(init.gpa);
 
-    for (fm.entity.items) |entity| {
-        if (entity.vehicle == null) continue;
-        const vehicle_position = entity.vehicle.?;
-        const stop = vehicle_position.stop_id orelse "NULL";
-        std.debug.print("vehicle id {s} is on trip {s} at stop {s}\n", .{ vehicle_position.vehicle.?.id.?, vehicle_position.trip.?.trip_id.?, stop });
-    }
-
     var ts: std.c.timespec = std.mem.zeroes(std.c.timespec);
     _ = std.c.clock_gettime(std.c.clockid_t.MONOTONIC, &ts);
     var prng = std.Random.DefaultPrng.init(@bitCast(ts.nsec));
@@ -54,9 +47,16 @@ pub fn main(init: std.process.Init) !void {
     }
 
     const vehicle = entity.?.vehicle.?;
-    std.debug.print("we randomly picked vehicle {s} which is on trip {s} at stop {s}\n", .{ vehicle.vehicle.?.id.?, vehicle.trip.?.trip_id.?, vehicle.stop_id orelse "NULL" });
-    const jsonOut = try fm.jsonEncode(.{}, .{}, init.gpa);
-    defer init.gpa.free(jsonOut);
+    const vehicle_id = vehicle.vehicle.?.id.?;
 
-    // std.debug.print("{s}", .{jsonOut});
+    var sb_backing: [512]u8 = undefined;
+    var sb = std.Io.Writer.fixed(&sb_backing);
+    try sb.writeAll("https://api-v3.mbta.com/vehicles/");
+    try sb.writeAll(vehicle_id);
+    try sb.writeAll("?include=trip,route,stop");
+    const vehicle_uri = try std.Uri.parse(sb.buffered());
+    var vehicle_res = try req_engine.req(init.gpa, .GET, vehicle_uri, &headers);
+    defer vehicle_res.deinit(init.gpa);
+
+    std.debug.print("{s}\n", .{vehicle_res.items});
 }
