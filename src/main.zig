@@ -2,6 +2,7 @@ const std = @import("std");
 const Io = std.Io;
 
 const req = @import("req_handler.zig");
+const pb = @import("proto/transit_realtime.pb.zig");
 
 fn get_api_key(allocator: std.mem.Allocator, io: std.Io, relpath: []const u8) ![]u8 {
     const cwd = std.Io.Dir.cwd();
@@ -25,9 +26,23 @@ pub fn main(init: std.process.Init) !void {
     var req_engine = req.RequestEngine.init(init.gpa, init.io);
     defer req_engine.deinit();
 
-    const uri = try std.Uri.parse("https://api-v3.mbta.com/vehicles?page%5Blimit%5D=1&filter%5Broute%5D=Orange");
+    const uri = try std.Uri.parse("https://cdn.mbta.com/realtime/VehiclePositions.pb");
     var res = try req_engine.req(init.gpa, .GET, uri, &headers);
     defer res.deinit(init.gpa);
 
-    std.debug.print("Response:\n{s}\n", .{res.items});
+    var res_reader = std.Io.Reader.fixed(res.items);
+    var fm = try pb.FeedMessage.decode(&res_reader, init.gpa);
+    defer fm.deinit(init.gpa);
+
+    for (fm.entity.items) |entity| {
+        if (entity.vehicle == null) continue;
+        const vehicle_position = entity.vehicle.?;
+        const stop = vehicle_position.stop_id orelse "NULL";
+        std.debug.print("vehicle id {s} is on trip {s} at stop {s}\n", .{ vehicle_position.vehicle.?.id.?, vehicle_position.trip.?.trip_id.?, stop });
+    }
+
+    const jsonOut = try fm.jsonEncode(.{}, .{}, init.gpa);
+    defer init.gpa.free(jsonOut);
+
+    // std.debug.print("{s}", .{jsonOut});
 }
