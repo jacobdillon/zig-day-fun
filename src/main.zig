@@ -41,6 +41,20 @@ pub fn main(init: std.process.Init) !void {
         std.debug.print("vehicle id {s} is on trip {s} at stop {s}\n", .{ vehicle_position.vehicle.?.id.?, vehicle_position.trip.?.trip_id.?, stop });
     }
 
+    var ts: std.c.timespec = std.mem.zeroes(std.c.timespec);
+    _ = std.c.clock_gettime(std.c.clockid_t.MONOTONIC, &ts);
+    var prng = std.Random.DefaultPrng.init(@bitCast(ts.nsec));
+
+    const rand = prng.random();
+    var entity: ?pb.FeedEntity = null;
+    while (true) {
+        const random_pick = rand.intRangeLessThan(usize, 0, fm.entity.items.len);
+        entity = fm.entity.items[random_pick];
+        if (entity.?.vehicle != null and entity.?.vehicle.?.stop_id != null) break;
+    }
+
+    const vehicle = entity.?.vehicle.?;
+    std.debug.print("we randomly picked vehicle {s} which is on trip {s} at stop {s}\n", .{ vehicle.vehicle.?.id.?, vehicle.trip.?.trip_id.?, vehicle.stop_id orelse "NULL" });
     const jsonOut = try fm.jsonEncode(.{}, .{}, init.gpa);
     defer init.gpa.free(jsonOut);
 
